@@ -6,6 +6,15 @@ const { poolPromise } = require('./db');
 const app = express();
 
 app.use(express.json());
+
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  }
+
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 const demoProducts = [
@@ -61,6 +70,50 @@ app.get('/api/products', async (req, res) => {
     console.error('Ошибка получения товаров:', error.message);
     res.status(500).json({ error: 'Не удалось загрузить товары' });
   }
+});
+
+// Маршруты для SEO файлов (напрямую)
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send('User-agent: *\nDisallow: /api/\nSitemap: http://localhost:3000/sitemap.xml');
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+   <url>
+      <loc>http://localhost:3000/</loc>
+      <lastmod>2026-10-28</lastmod>
+   </url>
+</urlset>`);
+});
+
+// Отдаем robots.txt
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send(`User-agent: *
+Disallow: /login
+Disallow: /api/
+Sitemap: http://localhost:3000/sitemap.xml`);
+});
+
+// Отдаем sitemap.xml
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+   <url>
+      <loc>http://localhost:3000/</loc>
+      <lastmod>2026-10-28</lastmod>
+   </url>
+</urlset>`);
+});
+
+// Закрываем API от индексации (как в примере)
+app.use('/api', (req, res, next) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  next();
 });
 
 module.exports = app;
